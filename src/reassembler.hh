@@ -3,10 +3,18 @@
 #include "byte_stream.hh"
 
 #include <string>
+#include <vector>
+#include <tuple>
+
+using namespace std;
 
 class Reassembler
 {
+  vector<vector<string>> buffer; // 未按序到达的缓存起来
+  uint64_t cur_need_index;  // 当前想要的数据起始字节
+  uint64_t bytes_in_buffer; // 在缓存中的字节数
 public:
+  explicit Reassembler( );
   /*
    * Insert a new substring to be reassembled into a ByteStream.
    *   `first_index`: the index of the first byte of the substring
@@ -31,4 +39,10 @@ public:
 
   // How many bytes are stored in the Reassembler itself?
   uint64_t bytes_pending() const;
+  // 存进缓冲区
+  void push_in_buffer(uint64_t first_index, string data, bool is_last_substring);
+  // 提交给流
+  void put_in_stream(Writer& output);
+  void last_empty_flag(uint64_t last_pos);// 处理有结束标志的空串
+  void output_buffer();//输出buffer调试用
 };

@@ -1,0 +1,127 @@
+//#include "reassembler.hh"
+/*#include <vector>
+#include <iostream>
+#include <tuple>
+
+using namespace std;
+
+Reassembler::Reassembler() : 
+  buffer(0), 
+  cur_need_index(0),
+  bytes_in_buffer(0)
+  {
+  }
+
+void Reassembler::insert( uint64_t first_index, string data, bool is_last_substring, Writer& output )
+{
+  cout<<"data  " <<  data << "   "<<"   is_last_substring  "<< is_last_substring << "   cur_need_index  "<< cur_need_index<< "   first_index  "<< first_index<< endl;
+  // 超出重组器范围
+  if(first_index >= cur_need_index + output.available_capacity()) {cout<<"超出重组器范围"<< data <<endl ; return ;}
+  if(first_index + data.size() < cur_need_index) return;
+  // 部分超出重组器范围
+
+  if(first_index + data.size() <= cur_need_index) {
+    // 如果是没用的数据
+      if(data=="" && bytes_in_buffer==0 &&  is_last_substring) output.close();
+  } else if(first_index <= cur_need_index){
+    // 可以交给流
+    string pushing_data = data.substr(cur_need_index-first_index);
+    if(output.available_capacity() >= pushing_data.size()) //流中容量够
+      {
+        output.push(pushing_data);
+        cout<< "放入流 "<< pushing_data<<endl;
+        cur_need_index = cur_need_index + pushing_data.size();
+      }
+    else // 流容量不够，部分放入，剩下的丢弃
+    {
+      int tt_len = output.available_capacity();
+      output.push(pushing_data.substr(0, tt_len));
+      cout<< "放入流 "<< pushing_data.substr(0, tt_len)<<endl;
+      cur_need_index = cur_need_index + tt_len;
+      // push_in_buffer(first_index + tt_len, data.substr(tt_len), is_last_substring);
+    }
+    if(is_last_substring) output.close();
+
+    // 从缓存区中看看有没有续上的
+    int times = 0;
+    while(bytes_in_buffer!=0 && cur_need_index >= get<0>(buffer[0]) ){
+      cout<< ++times<<endl;
+      if(get<0>(buffer[0]) + get<1>(buffer[0]).size() < cur_need_index){
+        // 这个缓存包中的数据已经交了
+        cout<<get<0>(buffer[0])<< get<1>(buffer[0]).size()<<cur_need_index<<bytes_in_buffer<< endl;
+        buffer.erase(buffer.begin());
+        bytes_in_buffer -= get<1>(buffer[0]).size();
+      } else{
+        pushing_data = get<1>(buffer[0]).substr(cur_need_index-get<0>(buffer[0]));
+        output.push(pushing_data);
+        cout<< "放入流 "<< pushing_data<<endl;
+        if(get<2>(buffer[0])) output.close();
+        cur_need_index += pushing_data.size();
+        bytes_in_buffer -= get<1>(buffer[0]).size();
+        buffer.erase(buffer.begin());
+      }
+      
+    }
+  } else {
+    // 收到乱序的报文, 存进buffer
+    push_in_buffer(first_index, data, is_last_substring);
+  }
+  
+  // cout<< "!!!!!!!!!!!" << output.is_closed() <<endl;
+  (void)first_index;
+  (void)data;
+  (void)is_last_substring;
+  (void)output;
+}
+
+uint64_t Reassembler::bytes_pending() const
+{
+  return bytes_in_buffer;
+}
+
+void Reassembler::push_in_buffer(uint64_t first_index, std::string data, bool is_last_substring){
+  if(data.size() == 0) return ;
+  bool inserted = false;
+  // 插入在中间某个位置
+  for(size_t i=0; i<buffer.size(); i++){
+    if(get<0>(buffer[i]) >= first_index){
+      size_t j = i;
+      while(j<buffer.size() && (first_index+data.size()) >= (get<0>(buffer[j])+get<1>(buffer[j]).size())){
+        // 新来的这个包含了后面
+        bytes_in_buffer -= get<1>(buffer[j]).size();
+        cout<<get<1>(buffer[j])<<" 出buffer "<<" 出之前buffer大小 "<<buffer.size()<<" 出之后buffer字节数 "<<bytes_in_buffer<<endl;
+        buffer.erase(buffer.begin()+j);
+      }
+      // cout<<i<<"  "<<buffer.size()<<endl;
+      if(buffer.size() == 0||i>buffer.size()-1) break;
+      else {
+        //cout<<get<1>(buffer[i])<<endl;
+        cout<<data.substr(0, get<0>(buffer[i]) - first_index)<< "入buffer  "<<" buffer大小 "<<buffer.size()<< " 位置 " << i<< " first_index "<< first_index<< " 下一个的起始index "<<  get<0>(buffer[i])<< "存进buffer的长度" <<get<0>(buffer[i]) - first_index<< endl;
+        buffer.emplace(buffer.begin()+i, make_tuple(first_index, data.substr(0, get<0>(buffer[i]) - first_index), is_last_substring));
+        inserted = true;
+        bytes_in_buffer += (get<1>(buffer[i]).size());
+        break;
+      }
+      
+    }
+  }
+  // 插入在最后
+  if(!inserted) {
+    if(buffer.size() == 0){
+      buffer.emplace_back(make_tuple(first_index, data, is_last_substring));
+      bytes_in_buffer += data.size();
+      cout<<data<< " 入buffer1 "<<" buffer大小 "<<buffer.size()<< " 位置:最后, 长度："<<data.size()<< " first_index "<< first_index<<" 缓存中字节数 "<<bytes_in_buffer<< endl; 
+    } else {
+      size_t left_index = get<0>(buffer[buffer.size()-1]);
+      if(left_index + get<1>(buffer[buffer.size()-1]).size() > first_index){
+        buffer.emplace_back(make_tuple(left_index + get<1>(buffer[buffer.size()-1]).size(), data.substr(left_index + get<1>(buffer[buffer.size()-1]).size()-first_index), is_last_substring));
+        bytes_in_buffer += get<1>(buffer[buffer.size()-1]).size();
+        cout<<get<1>(buffer[buffer.size()-1])<< " 入buffer2 "<<" buffer大小 "<<buffer.size()<< " 位置:最后, 长度："<<get<1>(buffer[buffer.size()-1]).size()<< " first_index "<< first_index<<" 缓存中字节数 "<<bytes_in_buffer<< endl; 
+      } else{
+        buffer.emplace_back(make_tuple(first_index, data, is_last_substring));
+        bytes_in_buffer += data.size();
+        cout<<data<< " 入buffer3 "<<" buffer大小 "<<buffer.size()<< " 位置:最后, 长度："<<data.size()<< " first_index "<< first_index<<" 缓存中字节数 "<<bytes_in_buffer<< endl; 
+      }
+    }
+  }
+}*/

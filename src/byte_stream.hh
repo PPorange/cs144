@@ -4,6 +4,9 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <vector>
+
+using namespace std;
 
 class Reader;
 class Writer;
@@ -12,6 +15,15 @@ class ByteStream
 {
 protected:
   uint64_t capacity_;
+  uint64_t head;// 头指针
+  uint64_t tail;// 尾指针
+  uint64_t cur_size ;// 当前容量
+  uint64_t available_size; //可用容量
+  uint64_t pushed_bytes_nums; // 已经流进多少字节
+  uint64_t poped_bytes_nums;  // 已经流出多少字节
+  bool is_closed_;  // 流是否关闭
+  bool error_occurred; //是否出现错误
+  vector<char> buffer; 
   // Please add any additional state to the ByteStream here, and not to the Writer and Reader interfaces.
 
 public:
