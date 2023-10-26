@@ -10,6 +10,11 @@
 #include <queue>
 #include <unordered_map>
 #include <utility>
+#include <unordered_map>
+#include <queue>
+#include <unordered_set>
+
+using namespace std;
 
 // A "network interface" that connects IP (the internet layer, or network layer)
 // with Ethernet (the network access layer, or link layer).
@@ -41,13 +46,32 @@ private:
   // IP (known as Internet-layer or network-layer) address of the interface
   Address ip_address_;
 
+  // ARP缓存
+  unordered_map<uint32_t, EthernetAddress> arp_buffer {};
+
+  // 以太网帧发送队列
+  queue<EthernetFrame> frame_buffer {};
+
+  // 因为不知道MAC地址所以还未发送的IP分组
+  unordered_map<uint32_t, queue<InternetDatagram>> nosend_ipsegment {};
+
+  // 正在arp询问的ip地址
+  unordered_map<uint32_t, uint64_t> requesting_ip {};
+
+  // 当前时间
+  uint64_t cur_time = 0;
+
+  // arp计时器
+  unordered_map<uint32_t, uint64_t> arp_timer {};
+
+
 public:
   // Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer)
   // addresses
   NetworkInterface( const EthernetAddress& ethernet_address, const Address& ip_address );
 
   // Access queue of Ethernet frames awaiting transmission
-  std::optional<EthernetFrame> maybe_send();
+  optional<EthernetFrame> maybe_send();
 
   // Sends an IPv4 datagram, encapsulated in an Ethernet frame (if it knows the Ethernet destination
   // address). Will need to use [ARP](\ref rfc::rfc826) to look up the Ethernet destination address
@@ -60,8 +84,10 @@ public:
   // If type is IPv4, returns the datagram.
   // If type is ARP request, learn a mapping from the "sender" fields, and send an ARP reply.
   // If type is ARP reply, learn a mapping from the "sender" fields.
-  std::optional<InternetDatagram> recv_frame( const EthernetFrame& frame );
+  optional<InternetDatagram> recv_frame( const EthernetFrame& frame );
 
   // Called periodically when time elapses
   void tick( size_t ms_since_last_tick );
+
+  uint32_t return_ip_address() {return ip_address_.ipv4_numeric();}
 };

@@ -5,6 +5,8 @@
 #include <optional>
 #include <queue>
 
+using namespace std;
+
 // A wrapper for NetworkInterface that makes the host-side
 // interface asynchronous: instead of returning received datagrams
 // immediately (from the `recv_frame` method), it stores them for
@@ -36,6 +38,7 @@ public:
   };
 
   // Access queue of Internet datagrams that have been received
+  // 路由器内部接口接收
   std::optional<InternetDatagram> maybe_receive()
   {
     if ( datagrams_in_.empty() ) {
@@ -52,8 +55,20 @@ public:
 // performs longest-prefix-match routing between them.
 class Router
 {
+
+  // 路由表项数据结构
+  struct router_table_item{
+    uint32_t route_prefix;  // 网络号，网络前缀
+    uint8_t prefix_length;  // 网络前缀长度
+    optional<Address> next_hop;  // 下一跳地址
+    size_t interface_num;   // 转发接口号
+  };
+
   // The router's collection of network interfaces
   std::vector<AsyncNetworkInterface> interfaces_ {};
+
+  // 路由表
+  std::vector<router_table_item> router_table {};
 
 public:
   // Add an interface to the router
@@ -68,11 +83,16 @@ public:
   // Access an interface by index
   AsyncNetworkInterface& interface( size_t N ) { return interfaces_.at( N ); }
 
+
+
   // Add a route (a forwarding rule)
   void add_route( uint32_t route_prefix,
                   uint8_t prefix_length,
-                  std::optional<Address> next_hop,
+                  optional<Address> next_hop,
                   size_t interface_num );
+
+  // 知道该报文的下一个接口
+  optional<router_table_item> find_next_inerface(InternetDatagram data);
 
   // Route packets between the interfaces. For each interface, use the
   // maybe_receive() method to consume every incoming datagram and

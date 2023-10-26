@@ -249,7 +249,7 @@ void network_simulator()
 
   Network network;
 
-  cout << green << "\n\nTesting traffic between two ordinary hosts (applesauce to cherrypie)..." << normal
+  cout << green << "\n\nTesting traffic between two ordinary hosts (applesauce to cherrypie)...1" << normal
        << "\n\n";
   {
     auto dgram_sent = network.host( "applesauce" ).send_to( network.host( "cherrypie" ).address() );

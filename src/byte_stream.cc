@@ -78,6 +78,15 @@ string_view Reader::peek() const
   return string_view(&buffer[head], 1);
 }
 
+string Reader::peek(uint64_t length) {
+  uint64_t able_get_nums = min(length, bytes_buffered());
+  string re;
+  for(uint64_t i =0; i<able_get_nums; i++){
+    re += buffer[i+head];
+  }
+  return re;
+}
+
 bool Reader::is_finished() const
 {
   if(head == tail && is_closed_)

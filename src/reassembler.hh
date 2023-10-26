@@ -45,4 +45,6 @@ public:
   void put_in_stream(Writer& output);
   void last_empty_flag(uint64_t last_pos);// 处理有结束标志的空串
   void output_buffer();//输出buffer调试用
+  void insert_SYN () {cur_need_index++;}; // 插入SYN
+  void insert_FIN () {cur_need_index++;}; // 插入FIN
 };
